@@ -1,0 +1,25 @@
+{
+  "name": "sol-bunker",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+  "node": ">=20"
+},
+  "dependencies": {
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-adapter-wallets": "^0.19.37",
+    "@solana/web3.js": "^1.98.2",
+    "axios": "^1.10.0",
+    "framer-motion": "^12.18.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test"
+  }
+}

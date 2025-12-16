@@ -1,0 +1,230 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Top Crypto Gainers</title>
+
+    <!-- Tailwind (CDN / no build) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React 18 UMD globals -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  </head>
+
+  <body class="bg-neutral-950 text-neutral-100">
+    <div id="root"></div>
+
+    <script>
+      // Pull React hooks from global React (UMD)
+      const { useEffect, useMemo, useRef, useState } = React;
+
+      function CryptoGainersApp() {
+        const [coins, setCoins] = useState([]);
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState("");
+        const [timeframe, setTimeframe] = useState("1h"); // "1h" | "24h"
+        const [limit, setLimit] = useState(10);
+        const [minVolume, setMinVolume] = useState(5000000); // USD 24h volume filter (default $5M)
+        const [autoRefresh, setAutoRefresh] = useState(true);
+        const [lastUpdated, setLastUpdated] = useState(null);
+
+        const intervalRef = useRef(null);
+
+        const fetchCoins = async () => {
+          try {
+            setLoading(true);
+            setError("");
+            // Request top 250 coins with 1h + 24h percent changes
+            const url = new URL("https://api.coingecko.com/api/v3/coins/markets");
+            url.searchParams.set("vs_currency", "usd");
+            url.searchParams.set("order", "market_cap_desc");
+            url.searchParams.set("per_page", "250");
+            url.searchParams.set("page", "1");
+            url.searchParams.set("sparkline", "false");
+            url.searchParams.set("price_change_percentage", "1h,24h");
+
+            const res = await fetch(url.toString());
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setCoins(Array.isArray(data) ? data : []);
+            setLastUpdated(new Date());
+          } catch (e) {
+            console.error(e);
+            setError(e?.message || "Failed to fetch data");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        useEffect(() => {
+          fetchCoins();
+        }, []);
+
+        useEffect(() => {
+          if (!autoRefresh) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            return;
+          }
+          // refresh every 60 minutes
+          const ms = 60 * 60 * 1000;
+          intervalRef.current = setInterval(fetchCoins, ms);
+          return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+          };
+        }, [autoRefresh]);
+
+        const rows = useMemo(() => {
+          const key =
+            timeframe === "1h"
+              ? "price_change_percentage_1h_in_currency"
+              : "price_change_percentage_24h_in_currency";
+          const filtered = coins
+            .filter((c) => Number.isFinite(c.total_volume) && c.total_volume >= minVolume)
+            .filter((c) => Number.isFinite(c[key]))
+            .sort((a, b) => (b[key] ?? -Infinity) - (a[key] ?? -Infinity))
+            .slice(0, limit);
+          return filtered;
+        }, [coins, timeframe, limit, minVolume]);
+
+        const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+        const fmtUSD = new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 2
+        });
+
+        return (
+          React.createElement("div", { className: "min-h-screen" },
+            React.createElement("div", { className: "mx-auto max-w-6xl p-6" },
+              React.createElement("header", { className: "mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between" },
+                React.createElement("div", null,
+                  React.createElement("h1", { className: "text-2xl sm:text-3xl font-bold tracking-tight" }, "Top Crypto Gainers"),
+                  React.createElement("p", { className: "text-sm text-neutral-400" },
+                    "Live pull from CoinGecko • Sorted by ", timeframe, " change • Auto-refresh hourly"
+                  ),
+                  lastUpdated &&
+                    React.createElement("p", { className: "text-xs text-neutral-500 mt-1" },
+                      "Last updated: ", lastUpdated.toLocaleString()
+                    )
+                ),
+                React.createElement("div", { className: "flex flex-wrap items-center gap-2" },
+                  React.createElement("select", {
+                    value: timeframe,
+                    onChange: (e) => setTimeframe(e.target.value),
+                    className: "rounded-xl bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
+                  },
+                    React.createElement("option", { value: "1h" }, "1 hour"),
+                    React.createElement("option", { value: "24h" }, "24 hours")
+                  ),
+                  React.createElement("input", {
+                    type: "number",
+                    value: minVolume,
+                    onChange: (e) => setMinVolume(Number(e.target.value) || 0),
+                    className: "w-36 rounded-xl bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm",
+                    placeholder: "Min vol (USD)",
+                    title: "Minimum 24h volume (USD)"
+                  }),
+                  React.createElement("input", {
+                    type: "number",
+                    value: limit,
+                    onChange: (e) => setLimit(Math.max(1, Number(e.target.value) || 10)),
+                    className: "w-24 rounded-xl bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm",
+                    placeholder: "Top N",
+                    title: "How many rows to show"
+                  }),
+                  React.createElement("button", {
+                    onClick: fetchCoins,
+                    className: "rounded-xl bg-white/10 hover:bg-white/20 transition px-3 py-2 text-sm",
+                    disabled: loading
+                  }, loading ? "Refreshing…" : "Refresh now"),
+                  React.createElement("label", { className: "flex items-center gap-2 text-sm" },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      checked: autoRefresh,
+                      onChange: (e) => setAutoRefresh(e.target.checked)
+                    }),
+                    "Auto-refresh hourly"
+                  )
+                )
+              ),
+
+              error && React.createElement("div", {
+                className: "mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"
+              }, "Error: ", error),
+
+              React.createElement("div", { className: "overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/40 shadow-xl" },
+                React.createElement("table", { className: "w-full text-sm" },
+                  React.createElement("thead", { className: "bg-neutral-900/60" },
+                    React.createElement("tr", { className: "text-left" },
+                      React.createElement("th", { className: "px-4 py-3" }, "#"),
+                      React.createElement("th", { className: "px-4 py-3" }, "Name"),
+                      React.createElement("th", { className: "px-4 py-3" }, "Price"),
+                      React.createElement("th", { className: "px-4 py-3" }, "1h %"),
+                      React.createElement("th", { className: "px-4 py-3" }, "24h %"),
+                      React.createElement("th", { className: "px-4 py-3" }, "Market Cap"),
+                      React.createElement("th", { className: "px-4 py-3" }, "24h Volume")
+                    )
+                  ),
+                  React.createElement("tbody", null,
+                    rows.map((c, idx) => {
+                      const ch1h = c.price_change_percentage_1h_in_currency;
+                      const ch24h = c.price_change_percentage_24h_in_currency;
+                      return React.createElement("tr", {
+                        key: c.id,
+                        className: "border-t border-neutral-800/70 hover:bg-neutral-800/30"
+                      },
+                        React.createElement("td", { className: "px-4 py-3 align-middle" }, idx + 1),
+                        React.createElement("td", { className: "px-4 py-3 align-middle" },
+                          React.createElement("div", { className: "flex items-center gap-3" },
+                            React.createElement("img", { src: c.image, alt: "", className: "h-6 w-6 rounded-full" }),
+                            React.createElement("div", null,
+                              React.createElement("div", { className: "font-medium" }, c.name),
+                              React.createElement("div", { className: "text-xs uppercase text-neutral-400" }, c.symbol)
+                            )
+                          )
+                        ),
+                        React.createElement("td", { className: "px-4 py-3 align-middle" }, fmtUSD.format(c.current_price)),
+                        React.createElement("td", {
+                          className:
+                            "px-4 py-3 align-middle " + (Number(ch1h) >= 0 ? "text-green-400" : "text-red-400")
+                        }, Number.isFinite(ch1h) ? `${fmt.format(ch1h)}%` : "—"),
+                        React.createElement("td", {
+                          className:
+                            "px-4 py-3 align-middle " + (Number(ch24h) >= 0 ? "text-green-400" : "text-red-400")
+                        }, Number.isFinite(ch24h) ? `${fmt.format(ch24h)}%` : "—"),
+                        React.createElement("td", { className: "px-4 py-3 align-middle" }, fmtUSD.format(c.market_cap)),
+                        React.createElement("td", { className: "px-4 py-3 align-middle" }, fmtUSD.format(c.total_volume))
+                      );
+                    })
+                  )
+                ),
+                rows.length === 0 && !loading &&
+                  React.createElement("div", { className: "p-6 text-center text-neutral-400 text-sm" },
+                    "No rows match your filters yet."
+                  )
+              ),
+
+              React.createElement("footer", { className: "mt-6 text-xs text-neutral-500" },
+                React.createElement("p", null,
+                  "Tip: raise/lower the Min Volume filter to avoid illiquid pumps. Data courtesy of CoinGecko. This view is for information only and not financial advice."
+                )
+              )
+            )
+          )
+        );
+      }
+
+      // Mount app
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(CryptoGainersApp));
+    </script>
+  </body>
+</html>
