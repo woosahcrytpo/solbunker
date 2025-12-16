@@ -1,50 +1,115 @@
-import React, { useEffect, useState } from 'react';
-import { buyToken } from '../services/buyService';
+import React, { useEffect, useState } from "react";
+import TradingViewWidget from "./TradingViewWidget";
 
-const TokenTab = () => {
+export default function TokenTab() {
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:4000');
+    // Safe WS: if backend isn't running, app still loads
+    let ws;
+    try {
+      ws = new WebSocket("ws://localhost:4000");
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.type === "new_pump_score" && data?.token) {
+            setTokens((prev) => [data.token, ...prev]);
+          }
+        } catch (e) {
+          // ignore bad messages
+        }
+      };
+    } catch (e) {
+      // ignore if ws fails
+    }
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'new_pump_score') {
-        setTokens((prev) => [data.token, ...prev]);
-      }
+    return () => {
+      try {
+        if (ws) ws.close();
+      } catch (e) {}
     };
-
-    return () => ws.close();
   }, []);
 
   const handleBuy = (token) => {
-    buyToken(token);
+    // For now: placeholder until we wire real execution
+    alert(`Buy clicked: ${token?.symbol || "TOKEN"}`);
   };
 
   return (
-    <div className="space-y-4">
-      {tokens.map((token, index) => (
-        <div key={index} className="bg-zinc-800 p-4 rounded-xl shadow-md">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-xl font-bold text-cyan-400">{token.symbol}</p>
-              <p className="text-sm text-gray-400">{token.token_address}</p>
-              <p className="text-sm">
-                Score: <span className="text-green-400 font-bold">{token.ai_pump_score}</span> (Conf: {token.confidence})
-              </p>
-              <p className="text-xs italic text-gray-500">{token.reason}</p>
+    <div style={{ display: "grid", gap: 14 }}>
+      {/* TradingView chart panel */}
+      <TradingViewWidget symbol="BINANCE:BTCUSDT" interval="1" />
+
+      {/* Token cards */}
+      <div style={{ display: "grid", gap: 12 }}>
+        {tokens.length === 0 ? (
+          <div style={{ padding: 14, border: "1px solid #1f2937", borderRadius: 12, background: "#0b1220" }}>
+            <div style={{ fontWeight: 800 }}>No signals yet</div>
+            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+              When your backend sends <code>new_pump_score</code>, tokens will appear here.
             </div>
-            <button
-              onClick={() => handleBuy(token)}
-              className="bg-green-500 px-4 py-2 text-white rounded hover:bg-green-600"
-            >
-              Buy
-            </button>
           </div>
-        </div>
-      ))}
+        ) : (
+          tokens.map((token, index) => (
+            <div
+              key={index}
+              style={{
+                border: "1px solid #1f2937",
+                borderRadius: 14,
+                padding: 14,
+                background: "#0b1220",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ minWidth: 240 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#22d3ee" }}>
+                  {token.symbol || "TOKEN"}
+                </div>
+
+                <div style={{ fontSize: 12, opacity: 0.7, wordBreak: "break-all" }}>
+                  {token.token_address || ""}
+                </div>
+
+                <div style={{ marginTop: 6, fontSize: 13 }}>
+                  Score:{" "}
+                  <span style={{ fontWeight: 900, color: "#4ade80" }}>
+                    {token.ai_pump_score ?? "-"}
+                  </span>{" "}
+                  <span style={{ opacity: 0.8 }}>
+                    (Conf: {token.confidence ?? "-"})
+                  </span>
+                </div>
+
+                {token.reason ? (
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7, fontStyle: "italic" }}>
+                    {token.reason}
+                  </div>
+                ) : null}
+              </div>
+
+              <button
+                onClick={() => handleBuy(token)}
+                style={{
+                  background: "#22c55e",
+                  border: "none",
+                  color: "white",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Buy
+              </button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
-};
+}
 
-export default TokenTab;
