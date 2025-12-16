@@ -32,9 +32,16 @@ export default function TradingViewWidget({ symbol = "BINANCE:BTCUSDT", interval
         details: false,
         hotlist: false,
         calendar: false,
-        studies: ["MACD@tv-basicstudies", "EMA Cross@tv-basicstudies"],
-      });
-    };
+    studies: [
+  "MACD@tv-basicstudies",
+  "EMA@tv-basicstudies",
+  "EMA@tv-basicstudies"
+],
+studies_overrides: {
+  "ema.length": 9,
+  "ema.length#2": 21
+},
+
 
     containerRef.current.appendChild(script);
   }, [symbol, interval]);
