@@ -11,7 +11,7 @@ export default function ReferralTab() {
         <code>https://solbunker.app/ref/CONNECT_WALLET</code>
       </p>
       <p style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
-        Wallet connect will be enabled next.
+        Wallet connect comes next.
       </p>
     </div>
   );
