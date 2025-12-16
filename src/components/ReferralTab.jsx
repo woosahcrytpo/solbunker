@@ -1,25 +1,18 @@
-import React, { useMemo } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import React from "react";
 
-const ReferralTab = () => {
-  const { publicKey } = useWallet();
-
-  const referralLink = useMemo(() => {
-    if (!publicKey) return 'Connect wallet to get your link';
-    return `https://solbunker.app/ref/${publicKey.toBase58()}`;
-  }, [publicKey]);
-
+export default function ReferralTab() {
   return (
-    <div className="text-center">
-      <h2 className="text-xl font-semibold text-cyan-300 mb-4">Referral Program</h2>
-      <p className="text-sm">Earn 25% of each referred user's trading fees.</p>
-      <p className="text-xs text-gray-400 mt-4 break-all">
+    <div style={{ textAlign: "center" }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700 }}>Referral Program</h2>
+      <p>Earn 25% of each referred user&apos;s trading fees.</p>
+      <p style={{ marginTop: 12, wordBreak: "break-all", opacity: 0.8 }}>
         Your referral link:
         <br />
-        <code>{referralLink}</code>
+        <code>https://solbunker.app/ref/CONNECT_WALLET</code>
+      </p>
+      <p style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
+        Wallet connect will be enabled next.
       </p>
     </div>
   );
-};
-
-export default ReferralTab;
+}
